@@ -269,12 +269,8 @@
         // 錶面尺寸
         const WATCH_WIDTH = 400;
         const WATCH_HEIGHT = 360;
-        const HANDLE_SIZE = 10; // 調整大小手柄的尺寸
+        const HANDLE_SIZE = 20; // 調整大小手柄的尺寸 (已加大)
         const MIN_IMAGE_SIZE = 20; // 圖片最小尺寸
-
-        // 初始化 Canvas 尺寸
-        canvas.width = WATCH_WIDTH;
-        canvas.height = WATCH_HEIGHT;
 
         // 儲存背景圖片和前景圖片的資料
         let backgroundImage = null; // Image 物件
@@ -760,12 +756,13 @@
             e.preventDefault(); // 防止瀏覽器預設行為
             const { x: mouseX, y: mouseY } = getCanvasCoords(e);
 
+            // 將 dx 和 dy 宣告移到這裡，確保它們在 handleMove 函數內始終有定義
+            const dx = mouseX - dragStartX;
+            const dy = mouseY - dragStartY;
+
             if (isResizing && selectedImageId !== null) {
                 const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
                 if (selectedImg && resizeDirection === 'se') {
-                    const dx = mouseX - dragStartX;
-                    const dy = mouseY - dragStartY;
-
                     let newWidth = initialImageWidth + dx;
                     let newHeight = initialImageHeight + dy;
 
@@ -794,11 +791,19 @@
             if (isDragging && selectedImageId !== null) {
                 const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
                 if (selectedImg) {
-                    const dx = mouseX - dragStartX;
-                    const dy = mouseY - dragStartY;
+                    let newX = initialImageX + dx; // 計算新的 X 座標
+                    let newY = initialImageY + dy; // 計算新的 Y 座標
 
-                    selectedImg.x = initialImageX + dx;
-                    selectedImg.y = initialImageY + dy;
+                    // 限制 X 座標在 Canvas 範圍內
+                    newX = Math.max(0, newX); // 左邊界
+                    newX = Math.min(WATCH_WIDTH - selectedImg.width, newX); // 右邊界 (考慮圖片寬度)
+
+                    // 限制 Y 座標在 Canvas 範圍內
+                    newY = Math.max(0, newY); // 上邊界
+                    newY = Math.min(WATCH_HEIGHT - selectedImg.height, newY); // 下邊界 (考慮圖片高度)
+
+                    selectedImg.x = newX;
+                    selectedImg.y = newY;
 
                     // 更新輸入框的值
                     xPosInput.value = selectedImg.x.toFixed(0);
