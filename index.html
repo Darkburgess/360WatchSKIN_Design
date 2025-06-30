@@ -53,6 +53,8 @@
             background-color: #f8fafc; /* Canvas fallback background */
             box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
             cursor: grab; /* Add grab cursor for general interaction */
+            /* Ensure it's touch-action: none to prevent default scroll/zoom on touch */
+            touch-action: none;
         }
         .canvas-container.dragging {
             cursor: grabbing; /* Change cursor when dragging */
@@ -427,7 +429,7 @@
             selectedImageId = id;
             const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
             if (selectedImg) {
-                initialAspectRatio = selectedImg.width / selectedImg.height; // 儲存選中圖片的初始比例
+                initialAspectRatio = selectedImg.aspectRatio; // 儲存選中圖片的原始比例
             }
             updateFgImageList(); // 重新渲染列表以更新選中狀態和編輯面板
         }
@@ -631,72 +633,108 @@
             document.body.removeChild(a);
         });
 
-        // Canvas 滑鼠事件處理
-        canvas.addEventListener('mousedown', (e) => {
-            // 獲取滑鼠在 Canvas 上的相對座標
+        /**
+         * 獲取滑鼠/觸控在 Canvas 上的相對座標。
+         * @param {Event} e - 滑鼠或觸控事件。
+         * @returns {{x: number, y: number}} - Canvas 上的座標。
+         */
+        function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            let clientX, clientY;
+
+            // 判斷是滑鼠事件還是觸控事件
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        /**
+         * 檢查點擊是否在圖片的調整大小手柄上。
+         * @param {object} imgData - 圖片資料物件。
+         * @param {number} mouseX - 滑鼠/觸控的 X 座標。
+         * @param {number} mouseY - 滑鼠/觸控的 Y 座標。
+         * @returns {boolean} - 是否點擊在手柄上。
+         */
+        function isClickOnHandle(imgData, mouseX, mouseY) {
+            const centerX = imgData.x + imgData.width / 2;
+            const centerY = imgData.y + imgData.height / 2;
+
+            // 將滑鼠座標平移到圖片中心為原點
+            const translatedMouseX = mouseX - centerX;
+            const translatedMouseY = mouseY - centerY;
+
+            // 反向旋轉滑鼠座標
+            const cos = Math.cos(-imgData.rotation * Math.PI / 180);
+            const sin = Math.sin(-imgData.rotation * Math.PI / 180);
+            const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
+            const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
+
+            // 檢查反向旋轉後的座標是否在手柄的局部邊界內 (右下角手柄)
+            const handleLocalX = imgData.width / 2 - HANDLE_SIZE / 2;
+            const handleLocalY = imgData.height / 2 - HANDLE_SIZE / 2;
+
+            return (rotatedMouseX >= handleLocalX && rotatedMouseX <= handleLocalX + HANDLE_SIZE &&
+                    rotatedMouseY >= handleLocalY && rotatedMouseY <= handleLocalY + HANDLE_SIZE);
+        }
+
+        /**
+         * 檢查點擊是否在圖片本身上。
+         * @param {object} imgData - 圖片資料物件。
+         * @param {number} mouseX - 滑鼠/觸控的 X 座標。
+         * @param {number} mouseY - 滑鼠/觸控的 Y 座標。
+         * @returns {boolean} - 是否點擊在圖片上。
+         */
+        function isClickOnImage(imgData, mouseX, mouseY) {
+            const centerX = imgData.x + imgData.width / 2;
+            const centerY = imgData.y + imgData.height / 2;
+
+            const translatedX = mouseX - centerX;
+            const translatedY = mouseY - centerY;
+
+            const rotatedX = translatedX * Math.cos(-imgData.rotation * Math.PI / 180) - translatedY * Math.sin(-imgData.rotation * Math.PI / 180);
+            const rotatedY = translatedX * Math.sin(-imgData.rotation * Math.PI / 180) + translatedY * Math.cos(-imgData.rotation * Math.PI / 180);
+
+            return (rotatedX >= -imgData.width / 2 && rotatedX <= imgData.width / 2 &&
+                    rotatedY >= -imgData.height / 2 && rotatedY <= imgData.height / 2);
+        }
+
+
+        // 統一的開始事件處理 (mousedown 和 touchstart)
+        function handleStart(e) {
+            e.preventDefault(); // 防止瀏覽器預設行為 (如滾動、縮放)
+            const { x: mouseX, y: mouseY } = getCanvasCoords(e);
 
             // 檢查是否點擊到調整大小手柄
             if (selectedImageId !== null) {
                 const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
-                if (selectedImg) {
-                    const centerX = selectedImg.x + selectedImg.width / 2;
-                    const centerY = selectedImg.y + selectedImg.height / 2;
-
-                    // 將滑鼠座標平移到圖片中心為原點
-                    const translatedMouseX = mouseX - centerX;
-                    const translatedMouseY = mouseY - centerY;
-
-                    // 反向旋轉滑鼠座標
-                    const cos = Math.cos(-selectedImg.rotation * Math.PI / 180);
-                    const sin = Math.sin(-selectedImg.rotation * Math.PI / 180);
-                    const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
-                    const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
-
-                    // 檢查反向旋轉後的座標是否在手柄的局部邊界內 (右下角手柄)
-                    const handleLocalX = selectedImg.width / 2 - HANDLE_SIZE / 2;
-                    const handleLocalY = selectedImg.height / 2 - HANDLE_SIZE / 2;
-
-                    if (rotatedMouseX >= handleLocalX && rotatedMouseX <= handleLocalX + HANDLE_SIZE &&
-                        rotatedMouseY >= handleLocalY && rotatedMouseY <= handleLocalY + HANDLE_SIZE) {
-                        isResizing = true;
-                        resizeDirection = 'se'; // South-East handle
-                        canvasContainer.classList.add('dragging');
-                        dragStartX = mouseX;
-                        dragStartY = mouseY;
-                        initialImageWidth = selectedImg.width;
-                        initialImageHeight = selectedImg.height;
-                        initialAspectRatio = selectedImg.aspectRatio; // 確保使用圖片的原始比例
-                        e.preventDefault(); // 防止瀏覽器預設的拖曳行為
-                        return; // 停止進一步處理 mousedown
-                    }
+                if (selectedImg && isClickOnHandle(selectedImg, mouseX, mouseY)) {
+                    isResizing = true;
+                    resizeDirection = 'se'; // South-East handle
+                    canvasContainer.classList.add('dragging');
+                    dragStartX = mouseX;
+                    dragStartY = mouseY;
+                    initialImageWidth = selectedImg.width;
+                    initialImageHeight = selectedImg.height;
+                    initialAspectRatio = selectedImg.aspectRatio; // 確保使用圖片的原始比例
+                    return; // 停止進一步處理
                 }
             }
 
             // 檢查是否點擊到任何前景圖片 (如果沒有點擊到手柄)
-            // 從最上層的圖片開始檢查 (zIndex 最大的)
-            const sortedFgImages = [...foregroundImages].sort((a, b) => b.zIndex - a.zIndex);
+            const sortedFgImages = [...foregroundImages].sort((a, b) => b.zIndex - a.zIndex); // 從最上層開始檢查
             let clickedImage = null;
 
             for (const imgData of sortedFgImages) {
-                // 為了正確的點擊檢測，需要考慮旋轉
-                // 將滑鼠座標反向旋轉，然後檢查是否在未旋轉的圖片邊界內
-                const centerX = imgData.x + imgData.width / 2;
-                const centerY = imgData.y + imgData.height / 2;
-
-                // 將滑鼠座標平移到圖片中心為原點
-                const translatedX = mouseX - centerX;
-                const translatedY = mouseY - centerY;
-
-                // 反向旋轉滑鼠座標
-                const rotatedX = translatedX * Math.cos(-imgData.rotation * Math.PI / 180) - translatedY * Math.sin(-imgData.rotation * Math.PI / 180);
-                const rotatedY = translatedX * Math.sin(-imgData.rotation * Math.PI / 180) + translatedY * Math.cos(-imgData.rotation * Math.PI / 180);
-
-                // 檢查反向旋轉後的座標是否在圖片的未旋轉邊界內
-                if (rotatedX >= -imgData.width / 2 && rotatedX <= imgData.width / 2 &&
-                    rotatedY >= -imgData.height / 2 && rotatedY <= imgData.height / 2) {
+                if (isClickOnImage(imgData, mouseX, mouseY)) {
                     clickedImage = imgData;
                     break; // 找到最上層的點擊圖片
                 }
@@ -715,12 +753,12 @@
                 selectedImageId = null;
                 updateFgImageList();
             }
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+        // 統一的移動事件處理 (mousemove 和 touchmove)
+        function handleMove(e) {
+            e.preventDefault(); // 防止瀏覽器預設行為
+            const { x: mouseX, y: mouseY } = getCanvasCoords(e);
 
             if (isResizing && selectedImageId !== null) {
                 const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
@@ -750,7 +788,7 @@
 
                     renderCanvas(); // 重新繪製 Canvas
                 }
-                return; // 停止進一步處理 mousemove
+                return;
             }
 
             if (isDragging && selectedImageId !== null) {
@@ -768,29 +806,14 @@
 
                     renderCanvas(); // 重新繪製 Canvas
                 }
-                return; // 停止進一步處理 mousemove
+                return;
             }
 
             // 處理鼠標樣式 (當沒有拖曳或調整大小時)
             if (!isDragging && !isResizing && selectedImageId !== null) {
                 const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
                 if (selectedImg) {
-                    const centerX = selectedImg.x + selectedImg.width / 2;
-                    const centerY = selectedImg.y + selectedImg.height / 2;
-
-                    const translatedMouseX = mouseX - centerX;
-                    const translatedMouseY = mouseY - centerY;
-
-                    const cos = Math.cos(-selectedImg.rotation * Math.PI / 180);
-                    const sin = Math.sin(-selectedImg.rotation * Math.PI / 180);
-                    const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
-                    const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
-
-                    const handleLocalX = selectedImg.width / 2 - HANDLE_SIZE / 2;
-                    const handleLocalY = selectedImg.height / 2 - HANDLE_SIZE / 2;
-
-                    if (rotatedMouseX >= handleLocalX && rotatedMouseX <= handleLocalX + HANDLE_SIZE &&
-                        rotatedMouseY >= handleLocalY && rotatedMouseY <= handleLocalY + HANDLE_SIZE) {
+                    if (isClickOnHandle(selectedImg, mouseX, mouseY)) {
                         canvas.style.cursor = 'se-resize'; // 右下角調整大小鼠標
                     } else {
                         canvas.style.cursor = 'grab'; // 預設拖曳鼠標
@@ -799,15 +822,28 @@
             } else if (!isDragging && !isResizing) {
                 canvas.style.cursor = 'grab'; // 預設拖曳鼠標
             }
-        });
+        }
 
-        canvas.addEventListener('mouseup', () => {
+        // 統一的結束事件處理 (mouseup 和 touchend)
+        function handleEnd() {
             isDragging = false;
             isResizing = false;
             resizeDirection = null;
             canvasContainer.classList.remove('dragging'); // 恢復鼠標樣式
             canvas.style.cursor = 'grab'; // 恢復預設鼠標
-        });
+        }
+
+
+        // 綁定事件監聽器
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', handleStart, { passive: false }); // passive: false 允許 preventDefault
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+        canvas.addEventListener('touchend', handleEnd);
+        canvas.addEventListener('touchcancel', handleEnd); // 處理觸控中斷的情況
+
 
         // 初始繪製 Canvas
         renderCanvas();
