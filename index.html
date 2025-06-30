@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360 兒童手錶 F2 錶面設計器</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        @media (min-width: 1024px) {
+            .container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+        }
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .canvas-container {
+            flex-shrink: 0;
+            width: 400px; /* 錶面寬度 */
+            height: 360px; /* 錶面高度 */
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            background-color: #f8fafc; /* Canvas fallback background */
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+            cursor: grab; /* Add grab cursor for general interaction */
+        }
+        .canvas-container.dragging {
+            cursor: grabbing; /* Change cursor when dragging */
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fdfdfd;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .layer-item.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .layer-item img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 4px;
+            background-color: #e2e8f0;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .input-group label {
+            font-size: 0.9em;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        .input-group input[type="number"] {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .button-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            text-align: center;
+            border: none;
+        }
+        .button-primary:hover {
+            background-color: #2563eb;
+        }
+        .button-secondary {
+            background-color: #e2e8f0;
+            color: #4a5568;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+        }
+        .button-secondary:hover {
+            background-color: #cbd5e0;
+        }
+        .button-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+        }
+        .button-danger:hover {
+            background-color: #dc2626;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-input-wrapper .button-primary {
+            display: block;
+            width: 100%;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e0;
+            accent-color: #3b82f6; /* For checked state color */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls-panel">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">錶面設計器</h2>
+
+            <!-- 背景圖片上傳 -->
+            <div class="input-group">
+                <label class="text-lg font-semibold text-gray-700">背景圖片</label>
+                <div class="file-input-wrapper">
+                    <button class="button-primary">上傳背景圖片</button>
+                    <input type="file" id="bgImageInput" accept="image/*">
+                </div>
+            </div>
+
+            <!-- 去背圖片上傳 -->
+            <div class="input-group">
+                <label class="text-lg font-semibold text-gray-700">去背圖片 (PNG/JPG)</label>
+                <div class="file-input-wrapper">
+                    <button class="button-primary">上傳去背圖片</button>
+                    <input type="file" id="fgImageInput" accept="image/png, image/jpeg" multiple>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">建議使用 PNG 圖片以保留透明背景。</p>
+            </div>
+
+            <!-- 去背圖片圖層管理 -->
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">去背圖片圖層</h3>
+                <div id="fgImageList" class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
+                    <p class="text-gray-500 text-sm">請上傳去背圖片以開始編輯。</p>
+                </div>
+            </div>
+
+            <!-- 選擇的去背圖片屬性編輯 -->
+            <div id="selectedImageControls" class="hidden border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">編輯選取圖片</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label for="xPos">X 座標</label>
+                        <input type="number" id="xPos" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="yPos">Y 座標</label>
+                        <input type="number" id="yPos" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="widthInput">寬度</label>
+                        <input type="number" id="widthInput" value="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="heightInput">高度</label>
+                        <input type="number" id="heightInput" value="100">
+                    </div>
+                    <div class="input-group col-span-2">
+                        <label for="rotationInput">旋轉角度 (度)</label>
+                        <input type="number" id="rotationInput" value="0" min="0" max="360">
+                    </div>
+                </div>
+                <!-- 新增的鎖定比例核選方塊 -->
+                <div class="checkbox-group">
+                    <input type="checkbox" id="lockAspectRatioCheckbox" checked>
+                    <label for="lockAspectRatioCheckbox" class="text-gray-700">鎖定比例</label>
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button id="moveUpBtn" class="button-secondary flex-1">上移圖層</button>
+                    <button id="moveDownBtn" class="button-secondary flex-1">下移圖層</button>
+                    <button id="deleteBtn" class="button-danger flex-1">刪除圖片</button>
+                </div>
+            </div>
+
+            <!-- 儲存按鈕 -->
+            <div class="flex gap-4 mt-6">
+                <button id="savePngBtn" class="button-primary flex-1">保存為 PNG</button>
+                <button id="saveJpgBtn" class="button-primary flex-1">保存為 JPG</button>
+            </div>
+        </div>
+
+        <!-- 錶面預覽區 -->
+        <div class="canvas-container flex items-center justify-center">
+            <canvas id="watchFaceCanvas" width="400" height="360"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 獲取 Canvas 元素和其 2D 繪圖上下文
+        const canvas = document.getElementById('watchFaceCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.querySelector('.canvas-container');
+
+        // 錶面尺寸
+        const WATCH_WIDTH = 400;
+        const WATCH_HEIGHT = 360;
+        const HANDLE_SIZE = 10; // 調整大小手柄的尺寸
+        const MIN_IMAGE_SIZE = 20; // 圖片最小尺寸
+
+        // 初始化 Canvas 尺寸
+        canvas.width = WATCH_WIDTH;
+        canvas.height = WATCH_HEIGHT;
+
+        // 儲存背景圖片和前景圖片的資料
+        let backgroundImage = null; // Image 物件
+        let foregroundImages = []; // 儲存 { id, image, x, y, width, height, rotation, zIndex, aspectRatio } 物件
+        let nextImageId = 0; // 用於生成唯一的圖片 ID
+        let selectedImageId = null; // 當前選中的圖片 ID
+
+        // 拖曳和調整大小相關變數
+        let isDragging = false;
+        let isResizing = false;
+        let resizeDirection = null; // 'se' for South-East handle
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let initialImageX = 0;
+        let initialImageY = 0;
+        let initialImageWidth = 0;
+        let initialImageHeight = 0;
+        let initialAspectRatio = 1; // 儲存圖片的初始比例
+
+        // 鎖定比例狀態
+        let lockAspectRatio = true; // 預設鎖定比例
+
+        // 獲取 DOM 元素
+        const bgImageInput = document.getElementById('bgImageInput');
+        const fgImageInput = document.getElementById('fgImageInput');
+        const fgImageList = document.getElementById('fgImageList');
+        const selectedImageControls = document.getElementById('selectedImageControls');
+        const xPosInput = document.getElementById('xPos');
+        const yPosInput = document.getElementById('yPos');
+        const widthInput = document.getElementById('widthInput');
+        const heightInput = document.getElementById('heightInput');
+        const rotationInput = document.getElementById('rotationInput');
+        const lockAspectRatioCheckbox = document.getElementById('lockAspectRatioCheckbox'); // 新增的核選方塊
+        const moveUpBtn = document.getElementById('moveUpBtn');
+        const moveDownBtn = document.getElementById('moveDownBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const savePngBtn = document.getElementById('savePngBtn');
+        const saveJpgBtn = document.getElementById('saveJpgBtn');
+
+        /**
+         * 繪製整個錶面。
+         * 按照圖層順序繪製背景和所有前景圖片。
+         */
+        function renderCanvas() {
+            // 清空 Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 繪製背景圖片
+            if (backgroundImage) {
+                ctx.drawImage(backgroundImage, 0, 0, WATCH_WIDTH, WATCH_HEIGHT);
+            } else {
+                // 如果沒有背景圖片，則填充一個淺灰色背景
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(0, 0, WATCH_WIDTH, WATCH_HEIGHT);
+            }
+
+            // 根據 zIndex 排序前景圖片，確保正確的圖層順序
+            const sortedFgImages = [...foregroundImages].sort((a, b) => a.zIndex - b.zIndex);
+
+            // 繪製前景圖片
+            sortedFgImages.forEach(imgData => {
+                if (imgData.image) {
+                    ctx.save(); // 保存當前 Canvas 狀態
+
+                    // 將原點移動到圖片中心進行旋轉
+                    const centerX = imgData.x + imgData.width / 2;
+                    const centerY = imgData.y + imgData.height / 2;
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(imgData.rotation * Math.PI / 180); // 角度轉弧度
+
+                    // 繪製圖片 (從中心點往回繪製)
+                    ctx.drawImage(imgData.image, -imgData.width / 2, -imgData.height / 2, imgData.width, imgData.height);
+
+                    // 如果是選中的圖片，繪製其邊框和調整大小手柄
+                    if (imgData.id === selectedImageId) {
+                        ctx.strokeStyle = '#3b82f6'; // 藍色邊框
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]); // 虛線
+                        ctx.strokeRect(-imgData.width / 2, -imgData.height / 2, imgData.width, imgData.height);
+
+                        // 繪製右下角調整大小手柄
+                        ctx.fillStyle = '#3b82f6'; // 藍色手柄
+                        ctx.fillRect(imgData.width / 2 - HANDLE_SIZE / 2, imgData.height / 2 - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+                    }
+
+                    ctx.restore(); // 恢復 Canvas 狀態
+                }
+            });
+        }
+
+        /**
+         * 更新前景圖片列表 UI。
+         */
+        function updateFgImageList() {
+            fgImageList.innerHTML = ''; // 清空列表
+
+            if (foregroundImages.length === 0) {
+                fgImageList.innerHTML = '<p class="text-gray-500 text-sm">請上傳去背圖片以開始編輯。</p>';
+                selectedImageControls.classList.add('hidden'); // 隱藏編輯面板
+                selectedImageId = null; // 清除選中的圖片
+                renderCanvas(); // 重新繪製以移除選中框
+                return;
+            }
+
+            // 根據 zIndex 排序，讓列表順序與圖層順序一致
+            const sortedFgImages = [...foregroundImages].sort((a, b) => a.zIndex - b.zIndex);
+
+            sortedFgImages.forEach(imgData => {
+                const div = document.createElement('div');
+                div.className = `layer-item ${imgData.id === selectedImageId ? 'selected' : ''}`;
+                div.dataset.id = imgData.id; // 儲存 ID 以便識別
+
+                const img = document.createElement('img');
+                img.src = imgData.image.src;
+                img.alt = `Layer ${imgData.id}`;
+
+                const span = document.createElement('span');
+                span.textContent = `圖片 ${imgData.id}`;
+                span.className = 'flex-1 text-gray-700 font-medium truncate';
+
+                div.append(img, span);
+                fgImageList.appendChild(div);
+            });
+
+            // 如果有選中的圖片，更新編輯面板
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    xPosInput.value = selectedImg.x.toFixed(0); // 顯示整數
+                    yPosInput.value = selectedImg.y.toFixed(0); // 顯示整數
+                    widthInput.value = selectedImg.width.toFixed(0); // 顯示整數
+                    heightInput.value = selectedImg.height.toFixed(0); // 顯示整數
+                    rotationInput.value = selectedImg.rotation.toFixed(0); // 顯示整數
+                    lockAspectRatioCheckbox.checked = lockAspectRatio; // 更新核選方塊狀態
+                    selectedImageControls.classList.remove('hidden');
+                } else {
+                    // 如果選中的圖片不存在了 (可能被刪除)，則隱藏面板
+                    selectedImageControls.classList.add('hidden');
+                    selectedImageId = null;
+                }
+            } else {
+                selectedImageControls.classList.add('hidden');
+            }
+            renderCanvas();
+        }
+
+        /**
+         * 選擇一個前景圖片進行編輯。
+         * @param {number} id - 圖片的唯一 ID。
+         */
+        function selectImage(id) {
+            selectedImageId = id;
+            const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+            if (selectedImg) {
+                initialAspectRatio = selectedImg.width / selectedImg.height; // 儲存選中圖片的初始比例
+            }
+            updateFgImageList(); // 重新渲染列表以更新選中狀態和編輯面板
+        }
+
+        /**
+         * 處理圖片檔案上傳。
+         * @param {Event} event - change 事件。
+         * @param {string} type - 'background' 或 'foreground'。
+         */
+        function handleImageUpload(event, type) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) {
+                    console.error('不是圖片檔案:', file.name);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        if (type === 'background') {
+                            backgroundImage = img;
+                        } else {
+                            // 預設大小為原圖的 1/4，並放置在中心
+                            const defaultWidth = Math.min(img.width, WATCH_WIDTH / 2);
+                            const defaultHeight = Math.min(img.height, WATCH_HEIGHT / 2);
+                            const defaultX = (WATCH_WIDTH - defaultWidth) / 2;
+                            const defaultY = (WATCH_HEIGHT - defaultHeight) / 2;
+
+                            foregroundImages.push({
+                                id: nextImageId++,
+                                image: img,
+                                x: defaultX,
+                                y: defaultY,
+                                width: defaultWidth,
+                                height: defaultHeight,
+                                rotation: 0,
+                                zIndex: foregroundImages.length, // 新圖片放在最上層
+                                aspectRatio: img.width / img.height // 儲存圖片的原始比例
+                            });
+                            // 自動選中新上傳的圖片
+                            selectImage(nextImageId - 1);
+                        }
+                        updateFgImageList(); // 更新列表和 Canvas
+                    };
+                    img.onerror = () => {
+                        console.error('圖片載入失敗:', file.name);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 事件監聽器
+        bgImageInput.addEventListener('change', (e) => handleImageUpload(e, 'background'));
+        fgImageInput.addEventListener('change', (e) => handleImageUpload(e, 'foreground'));
+
+        // 屬性輸入框監聽器
+        widthInput.addEventListener('input', () => {
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.width = parseFloat(widthInput.value);
+                    if (lockAspectRatio) {
+                        selectedImg.height = selectedImg.width / initialAspectRatio;
+                        heightInput.value = selectedImg.height.toFixed(0);
+                    }
+                    renderCanvas();
+                }
+            }
+        });
+
+        heightInput.addEventListener('input', () => {
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.height = parseFloat(heightInput.value);
+                    if (lockAspectRatio) {
+                        selectedImg.width = selectedImg.height * initialAspectRatio;
+                        widthInput.value = selectedImg.width.toFixed(0);
+                    }
+                    renderCanvas();
+                }
+            }
+        });
+
+        xPosInput.addEventListener('input', () => {
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.x = parseFloat(xPosInput.value);
+                    renderCanvas();
+                }
+            }
+        });
+
+        yPosInput.addEventListener('input', () => {
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.y = parseFloat(yPosInput.value);
+                    renderCanvas();
+                }
+            }
+        });
+
+        rotationInput.addEventListener('input', () => {
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.rotation = parseFloat(rotationInput.value);
+                    renderCanvas();
+                }
+            }
+        });
+
+
+        // 鎖定比例核選方塊監聽器
+        lockAspectRatioCheckbox.addEventListener('change', () => {
+            lockAspectRatio = lockAspectRatioCheckbox.checked;
+            // 如果從未鎖定變為鎖定，則強制調整一次比例
+            if (lockAspectRatio && selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    selectedImg.height = selectedImg.width / initialAspectRatio;
+                    heightInput.value = selectedImg.height.toFixed(0);
+                    renderCanvas();
+                }
+            }
+        });
+
+        // 圖層操作按鈕監聽器
+        moveUpBtn.addEventListener('click', () => {
+            if (selectedImageId !== null) {
+                const index = foregroundImages.findIndex(img => img.id === selectedImageId);
+                if (index > 0) {
+                    // 交換 zIndex
+                    const currentZIndex = foregroundImages[index].zIndex;
+                    const prevZIndex = foregroundImages[index - 1].zIndex;
+
+                    foregroundImages[index].zIndex = prevZIndex;
+                    foregroundImages[index - 1].zIndex = currentZIndex;
+
+                    // 確保陣列順序也反映 zIndex
+                    foregroundImages.sort((a, b) => a.zIndex - b.zIndex);
+                    updateFgImageList();
+                }
+            }
+        });
+
+        moveDownBtn.addEventListener('click', () => {
+            if (selectedImageId !== null) {
+                const index = foregroundImages.findIndex(img => img.id === selectedImageId);
+                if (index < foregroundImages.length - 1) {
+                    // 交換 zIndex
+                    const currentZIndex = foregroundImages[index].zIndex;
+                    const nextZIndex = foregroundImages[index + 1].zIndex;
+
+                    foregroundImages[index].zIndex = nextZIndex;
+                    foregroundImages[index + 1].zIndex = currentZIndex;
+
+                    // 確保陣列順序也反映 zIndex
+                    foregroundImages.sort((a, b) => a.zIndex - b.zIndex);
+                    updateFgImageList();
+                }
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (selectedImageId !== null) {
+                foregroundImages = foregroundImages.filter(img => img.id !== selectedImageId);
+                // 重新調整剩餘圖片的 zIndex
+                foregroundImages.forEach((img, idx) => img.zIndex = idx);
+                selectedImageId = null; // 清除選中的圖片
+                updateFgImageList(); // 更新列表和 Canvas
+            }
+        });
+
+        // 儲存圖片按鈕監聽器
+        savePngBtn.addEventListener('click', () => {
+            const dataURL = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'watchface_design.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        saveJpgBtn.addEventListener('click', () => {
+            const dataURL = canvas.toDataURL('image/jpeg', 0.9); // 0.9 是品質參數
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'watchface_design.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // Canvas 滑鼠事件處理
+        canvas.addEventListener('mousedown', (e) => {
+            // 獲取滑鼠在 Canvas 上的相對座標
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 檢查是否點擊到調整大小手柄
+            if (selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    const centerX = selectedImg.x + selectedImg.width / 2;
+                    const centerY = selectedImg.y + selectedImg.height / 2;
+
+                    // 將滑鼠座標平移到圖片中心為原點
+                    const translatedMouseX = mouseX - centerX;
+                    const translatedMouseY = mouseY - centerY;
+
+                    // 反向旋轉滑鼠座標
+                    const cos = Math.cos(-selectedImg.rotation * Math.PI / 180);
+                    const sin = Math.sin(-selectedImg.rotation * Math.PI / 180);
+                    const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
+                    const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
+
+                    // 檢查反向旋轉後的座標是否在手柄的局部邊界內 (右下角手柄)
+                    const handleLocalX = selectedImg.width / 2 - HANDLE_SIZE / 2;
+                    const handleLocalY = selectedImg.height / 2 - HANDLE_SIZE / 2;
+
+                    if (rotatedMouseX >= handleLocalX && rotatedMouseX <= handleLocalX + HANDLE_SIZE &&
+                        rotatedMouseY >= handleLocalY && rotatedMouseY <= handleLocalY + HANDLE_SIZE) {
+                        isResizing = true;
+                        resizeDirection = 'se'; // South-East handle
+                        canvasContainer.classList.add('dragging');
+                        dragStartX = mouseX;
+                        dragStartY = mouseY;
+                        initialImageWidth = selectedImg.width;
+                        initialImageHeight = selectedImg.height;
+                        initialAspectRatio = selectedImg.aspectRatio; // 確保使用圖片的原始比例
+                        e.preventDefault(); // 防止瀏覽器預設的拖曳行為
+                        return; // 停止進一步處理 mousedown
+                    }
+                }
+            }
+
+            // 檢查是否點擊到任何前景圖片 (如果沒有點擊到手柄)
+            // 從最上層的圖片開始檢查 (zIndex 最大的)
+            const sortedFgImages = [...foregroundImages].sort((a, b) => b.zIndex - a.zIndex);
+            let clickedImage = null;
+
+            for (const imgData of sortedFgImages) {
+                // 為了正確的點擊檢測，需要考慮旋轉
+                // 將滑鼠座標反向旋轉，然後檢查是否在未旋轉的圖片邊界內
+                const centerX = imgData.x + imgData.width / 2;
+                const centerY = imgData.y + imgData.height / 2;
+
+                // 將滑鼠座標平移到圖片中心為原點
+                const translatedX = mouseX - centerX;
+                const translatedY = mouseY - centerY;
+
+                // 反向旋轉滑鼠座標
+                const rotatedX = translatedX * Math.cos(-imgData.rotation * Math.PI / 180) - translatedY * Math.sin(-imgData.rotation * Math.PI / 180);
+                const rotatedY = translatedX * Math.sin(-imgData.rotation * Math.PI / 180) + translatedY * Math.cos(-imgData.rotation * Math.PI / 180);
+
+                // 檢查反向旋轉後的座標是否在圖片的未旋轉邊界內
+                if (rotatedX >= -imgData.width / 2 && rotatedX <= imgData.width / 2 &&
+                    rotatedY >= -imgData.height / 2 && rotatedY <= imgData.height / 2) {
+                    clickedImage = imgData;
+                    break; // 找到最上層的點擊圖片
+                }
+            }
+
+            if (clickedImage) {
+                selectImage(clickedImage.id); // 選中點擊的圖片
+                isDragging = true;
+                canvasContainer.classList.add('dragging'); // 改變鼠標樣式
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+                initialImageX = clickedImage.x;
+                initialImageY = clickedImage.y;
+            } else {
+                // 如果沒有點擊到圖片，取消選中
+                selectedImageId = null;
+                updateFgImageList();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isResizing && selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg && resizeDirection === 'se') {
+                    const dx = mouseX - dragStartX;
+                    const dy = mouseY - dragStartY;
+
+                    let newWidth = initialImageWidth + dx;
+                    let newHeight = initialImageHeight + dy;
+
+                    if (lockAspectRatio) {
+                        // 根據變化量較大的方向來調整，以保持比例
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            newHeight = newWidth / initialAspectRatio;
+                        } else {
+                            newWidth = newHeight * initialAspectRatio;
+                        }
+                    }
+
+                    // 確保圖片不會太小
+                    selectedImg.width = Math.max(MIN_IMAGE_SIZE, newWidth);
+                    selectedImg.height = Math.max(MIN_IMAGE_SIZE, newHeight);
+
+                    // 更新輸入框的值
+                    widthInput.value = selectedImg.width.toFixed(0);
+                    heightInput.value = selectedImg.height.toFixed(0);
+
+                    renderCanvas(); // 重新繪製 Canvas
+                }
+                return; // 停止進一步處理 mousemove
+            }
+
+            if (isDragging && selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    const dx = mouseX - dragStartX;
+                    const dy = mouseY - dragStartY;
+
+                    selectedImg.x = initialImageX + dx;
+                    selectedImg.y = initialImageY + dy;
+
+                    // 更新輸入框的值
+                    xPosInput.value = selectedImg.x.toFixed(0);
+                    yPosInput.value = selectedImg.y.toFixed(0);
+
+                    renderCanvas(); // 重新繪製 Canvas
+                }
+                return; // 停止進一步處理 mousemove
+            }
+
+            // 處理鼠標樣式 (當沒有拖曳或調整大小時)
+            if (!isDragging && !isResizing && selectedImageId !== null) {
+                const selectedImg = foregroundImages.find(img => img.id === selectedImageId);
+                if (selectedImg) {
+                    const centerX = selectedImg.x + selectedImg.width / 2;
+                    const centerY = selectedImg.y + selectedImg.height / 2;
+
+                    const translatedMouseX = mouseX - centerX;
+                    const translatedMouseY = mouseY - centerY;
+
+                    const cos = Math.cos(-selectedImg.rotation * Math.PI / 180);
+                    const sin = Math.sin(-selectedImg.rotation * Math.PI / 180);
+                    const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
+                    const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
+
+                    const handleLocalX = selectedImg.width / 2 - HANDLE_SIZE / 2;
+                    const handleLocalY = selectedImg.height / 2 - HANDLE_SIZE / 2;
+
+                    if (rotatedMouseX >= handleLocalX && rotatedMouseX <= handleLocalX + HANDLE_SIZE &&
+                        rotatedMouseY >= handleLocalY && rotatedMouseY <= handleLocalY + HANDLE_SIZE) {
+                        canvas.style.cursor = 'se-resize'; // 右下角調整大小鼠標
+                    } else {
+                        canvas.style.cursor = 'grab'; // 預設拖曳鼠標
+                    }
+                }
+            } else if (!isDragging && !isResizing) {
+                canvas.style.cursor = 'grab'; // 預設拖曳鼠標
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            isResizing = false;
+            resizeDirection = null;
+            canvasContainer.classList.remove('dragging'); // 恢復鼠標樣式
+            canvas.style.cursor = 'grab'; // 恢復預設鼠標
+        });
+
+        // 初始繪製 Canvas
+        renderCanvas();
+        updateFgImageList(); // 初始更新列表
+    </script>
+</body>
+</html>
