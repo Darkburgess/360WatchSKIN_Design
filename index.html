@@ -244,7 +244,7 @@
                 </div>
                 <!-- 鎖定比例核選方塊 -->
                 <div class="checkbox-group">
-                    <input type="checkbox" id="lockAspectRatioCheckbox" checked>
+                    <input type="checkbox" id="lockAspectRatioCheckbox"> <!-- 移除了 checked 屬性 -->
                     <label for="lockAspectRatioCheckbox" class="text-gray-700">鎖定比例</label>
                 </div>
                 <!-- 邊緣緩衝區輸入框 -->
@@ -304,7 +304,7 @@
         let initialAspectRatio = 1; // 儲存圖片的初始比例
 
         // 鎖定比例狀態
-        let lockAspectRatio = true; // 預設鎖定比例
+        let lockAspectRatio = false; // 預設為 false (不勾選)
 
         // 獲取 DOM 元素
         const bgImageInput = document.getElementById('bgImageInput');
@@ -792,21 +792,14 @@
                     let newHeight = initialImageHeight + dy;
 
                     if (lockAspectRatio) {
-                        // 計算新的尺寸，以維持圖片的原始比例
-                        // 根據 X 或 Y 方向的變化量，選擇一個作為主導，並計算另一個維度
-                        if (initialImageWidth > 0 && initialImageHeight > 0) { // 避免除以零
-                            const currentScaleX = newWidth / initialImageWidth;
-                            const currentScaleY = newHeight / initialImageHeight;
-
-                            // 使用較大的縮放比例，確保圖片不會被擠壓，並按比例縮放
-                            const scale = Math.max(currentScaleX, currentScaleY);
-
-                            newWidth = initialImageWidth * scale;
-                            newHeight = initialImageHeight * scale;
-                        } else {
-                            // 如果初始尺寸為零，則退回到不保持比例的最小尺寸
-                            newWidth = Math.max(MIN_IMAGE_SIZE, newWidth);
-                            newHeight = Math.max(MIN_IMAGE_SIZE, newHeight);
+                        // 根據變化量較大的方向來調整，以保持比例
+                        // 這裡使用 initialAspectRatio，確保是圖片原始的比例
+                        if (initialAspectRatio > 0) { // 避免除以零
+                            if (Math.abs(dx) > Math.abs(dy)) {
+                                newHeight = newWidth / initialAspectRatio;
+                            } else {
+                                newWidth = newHeight * initialAspectRatio;
+                            }
                         }
                     }
 
