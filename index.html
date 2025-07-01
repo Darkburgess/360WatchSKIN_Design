@@ -336,8 +336,8 @@
             if (backgroundImage) {
                 ctx.drawImage(backgroundImage, 0, 0, WATCH_WIDTH, WATCH_HEIGHT);
             } else {
-                // 如果沒有背景圖片，則填充一個淺灰色背景
-                ctx.fillStyle = '#f8fafc';
+                // 如果沒有背景圖片，則填充一個純黑色背景
+                ctx.fillStyle = '#000000'; // 修改為黑色
                 ctx.fillRect(0, 0, WATCH_WIDTH, WATCH_HEIGHT);
             }
 
