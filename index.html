@@ -235,10 +235,15 @@
                         <input type="number" id="rotationInput" value="0" min="0" max="360">
                     </div>
                 </div>
-                <!-- 新增的鎖定比例核選方塊 -->
+                <!-- 鎖定比例核選方塊 -->
                 <div class="checkbox-group">
                     <input type="checkbox" id="lockAspectRatioCheckbox" checked>
                     <label for="lockAspectRatioCheckbox" class="text-gray-700">鎖定比例</label>
+                </div>
+                <!-- 邊緣緩衝區輸入框 -->
+                <div class="input-group mt-4">
+                    <label for="bleedMarginInput">邊緣緩衝區 (像素)</label>
+                    <input type="number" id="bleedMarginInput" value="30" min="0">
                 </div>
                 <div class="flex gap-2 mt-4">
                     <button id="moveUpBtn" class="button-secondary flex-1">上移圖層</button>
@@ -269,8 +274,9 @@
         // 錶面尺寸
         const WATCH_WIDTH = 400;
         const WATCH_HEIGHT = 360;
-        const HANDLE_SIZE = 20; // 調整大小手柄的尺寸 (已加大)
+        const HANDLE_SIZE = 20; // 調整大小手柄的尺寸
         const MIN_IMAGE_SIZE = 20; // 圖片最小尺寸
+        let BLEED_MARGIN = 30; // 圖片可以超出邊界的像素數 (現在是可變的)
 
         // 儲存背景圖片和前景圖片的資料
         let backgroundImage = null; // Image 物件
@@ -303,7 +309,8 @@
         const widthInput = document.getElementById('widthInput');
         const heightInput = document.getElementById('heightInput');
         const rotationInput = document.getElementById('rotationInput');
-        const lockAspectRatioCheckbox = document.getElementById('lockAspectRatioCheckbox'); // 新增的核選方塊
+        const lockAspectRatioCheckbox = document.getElementById('lockAspectRatioCheckbox');
+        const bleedMarginInput = document.getElementById('bleedMarginInput'); // 新增的邊緣緩衝區輸入框
         const moveUpBtn = document.getElementById('moveUpBtn');
         const moveDownBtn = document.getElementById('moveDownBtn');
         const deleteBtn = document.getElementById('deleteBtn');
@@ -405,6 +412,7 @@
                     heightInput.value = selectedImg.height.toFixed(0); // 顯示整數
                     rotationInput.value = selectedImg.rotation.toFixed(0); // 顯示整數
                     lockAspectRatioCheckbox.checked = lockAspectRatio; // 更新核選方塊狀態
+                    bleedMarginInput.value = BLEED_MARGIN; // 更新邊緣緩衝區輸入框
                     selectedImageControls.classList.remove('hidden');
                 } else {
                     // 如果選中的圖片不存在了 (可能被刪除)，則隱藏面板
@@ -560,6 +568,16 @@
                 }
             }
         });
+
+        // 邊緣緩衝區輸入框監聽器
+        bleedMarginInput.addEventListener('input', () => {
+            const value = parseInt(bleedMarginInput.value);
+            if (!isNaN(value) && value >= 0) {
+                BLEED_MARGIN = value;
+                renderCanvas(); // 重新繪製以更新邊界限制
+            }
+        });
+
 
         // 圖層操作按鈕監聽器
         moveUpBtn.addEventListener('click', () => {
@@ -794,13 +812,13 @@
                     let newX = initialImageX + dx; // 計算新的 X 座標
                     let newY = initialImageY + dy; // 計算新的 Y 座標
 
-                    // 限制 X 座標在 Canvas 範圍內
-                    newX = Math.max(0, newX); // 左邊界
-                    newX = Math.min(WATCH_WIDTH - selectedImg.width, newX); // 右邊界 (考慮圖片寬度)
+                    // 限制 X 座標在 Canvas 範圍內，允許超出 BLEED_MARGIN
+                    newX = Math.max(-BLEED_MARGIN, newX); // 左邊界
+                    newX = Math.min(WATCH_WIDTH - selectedImg.width + BLEED_MARGIN, newX); // 右邊界 (考慮圖片寬度)
 
-                    // 限制 Y 座標在 Canvas 範圍內
-                    newY = Math.max(0, newY); // 上邊界
-                    newY = Math.min(WATCH_HEIGHT - selectedImg.height, newY); // 下邊界 (考慮圖片高度)
+                    // 限制 Y 座標在 Canvas 範圍內，允許超出 BLEED_MARGIN
+                    newY = Math.max(-BLEED_MARGIN, newY); // 上邊界
+                    newY = Math.min(WATCH_HEIGHT - selectedImg.height + BLEED_MARGIN, newY); // 下邊界 (考慮圖片高度)
 
                     selectedImg.x = newX;
                     selectedImg.y = newY;
