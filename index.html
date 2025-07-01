@@ -178,9 +178,9 @@
         }
     </style>
     <!-- Favicon for general browsers -->
-    <link rel="icon" href="https://media.istockphoto.com/id/920345886/zh/%E5%90%91%E9%87%8F/%E7%B6%93%E5%85%B8%E8%85%95%E8%A1%A8%E5%9C%96%E7%A4%BA.jpg?s=612x612&w=0&k=20&c=2EPTuNQWUrjuvlpoHRLc8goOnFjEbcCfzcGD--NDnO0=$0">
+    <link rel="icon" href="https://placehold.co/32x32/1a73e8/ffffff?text=WF">
     <!-- Apple Touch Icon for iOS devices (iPhone, iPad) -->
-    <link rel="apple-touch-icon" href="https://media.istockphoto.com/id/920345886/zh/%E5%90%91%E9%87%8F/%E7%B6%93%E5%85%B8%E8%85%95%E8%A1%A8%E5%9C%96%E7%A4%BA.jpg?s=612x612&w=0&k=20&c=2EPTuNQWUrjuvlpoHRLc8goOnFjEbcCfzcGD--NDnO0=$0">
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/1a73e8/ffffff?text=WF">
     <!-- You can add more sizes for different devices if needed -->
     <!-- <link rel="apple-touch-icon" sizes="152x152" href="/path/to/icon-152x152.png"> -->
     <!-- <link rel="apple-touch-icon" sizes="180x180" href="/path/to/icon-180x180.png"> -->
@@ -792,17 +792,30 @@
                     let newHeight = initialImageHeight + dy;
 
                     if (lockAspectRatio) {
-                        // 根據變化量較大的方向來調整，以保持比例
-                        if (Math.abs(dx) > Math.abs(dy)) {
-                            newHeight = newWidth / initialAspectRatio;
+                        // 計算新的尺寸，以維持圖片的原始比例
+                        // 根據 X 或 Y 方向的變化量，選擇一個作為主導，並計算另一個維度
+                        if (initialImageWidth > 0 && initialImageHeight > 0) { // 避免除以零
+                            const currentScaleX = newWidth / initialImageWidth;
+                            const currentScaleY = newHeight / initialImageHeight;
+
+                            // 使用較大的縮放比例，確保圖片不會被擠壓，並按比例縮放
+                            const scale = Math.max(currentScaleX, currentScaleY);
+
+                            newWidth = initialImageWidth * scale;
+                            newHeight = initialImageHeight * scale;
                         } else {
-                            newWidth = newHeight * initialAspectRatio;
+                            // 如果初始尺寸為零，則退回到不保持比例的最小尺寸
+                            newWidth = Math.max(MIN_IMAGE_SIZE, newWidth);
+                            newHeight = Math.max(MIN_IMAGE_SIZE, newHeight);
                         }
                     }
 
                     // 確保圖片不會太小
-                    selectedImg.width = Math.max(MIN_IMAGE_SIZE, newWidth);
-                    selectedImg.height = Math.max(MIN_IMAGE_SIZE, newHeight);
+                    newWidth = Math.max(MIN_IMAGE_SIZE, newWidth);
+                    newHeight = Math.max(MIN_IMAGE_SIZE, newHeight);
+
+                    selectedImg.width = newWidth;
+                    selectedImg.height = newHeight;
 
                     // 更新輸入框的值
                     widthInput.value = selectedImg.width.toFixed(0);
