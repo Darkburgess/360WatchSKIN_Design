@@ -15,6 +15,8 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            /* For mobile, allow scrolling if content overflows */
+            overflow-x: hidden; /* Prevent horizontal scroll on body */
         }
         .container {
             background-color: #ffffff;
@@ -34,14 +36,48 @@
                 align-items: flex-start;
             }
         }
-        .controls-panel {
-            flex: 1;
-            min-width: 300px;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+
+        /* Mobile-specific layout adjustments */
+        @media (max-width: 1023px) {
+            body {
+                align-items: flex-start; /* Align content to top on mobile */
+                padding: 0; /* Remove padding for full screen mobile */
+            }
+            .container {
+                border-radius: 0; /* Remove border-radius on mobile for full screen */
+                box-shadow: none; /* Remove shadow on mobile */
+                padding: 0; /* Remove padding on mobile */
+                flex-direction: column; /* Ensure column layout */
+                width: 100%; /* Full width */
+                min-height: 100vh; /* Occupy full viewport height */
+                justify-content: flex-start; /* Align content to top */
+            }
+            .controls-panel {
+                width: 100%;
+                max-width: none; /* Remove max-width constraint */
+                padding: 20px; /* Add padding back to controls */
+                box-sizing: border-box; /* Include padding in width calculation */
+                order: 1; /* Place controls panel first on mobile */
+                background-color: #ffffff; /* Ensure background for fixed panel */
+                z-index: 10; /* Ensure it's above canvas */
+                /* Remove fixed positioning to prevent jumping when content changes */
+                position: relative;
+            }
+            .canvas-container {
+                width: 100%; /* Full width on mobile */
+                height: auto; /* Allow height to adjust */
+                max-width: 400px; /* Max width to maintain aspect ratio */
+                margin: 0 auto 20px auto; /* Center canvas and add margin below */
+                order: 2; /* Place canvas second on mobile */
+            }
+            canvas {
+                width: 100%;
+                height: auto; /* Maintain aspect ratio */
+                display: block;
+            }
         }
+
+
         .canvas-container {
             flex-shrink: 0;
             width: 400px; /* 錶面寬度 */
@@ -187,6 +223,7 @@
 </head>
 <body>
     <div class="container">
+        <!-- 控制面板 -->
         <div class="controls-panel">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">錶面設計器</h2>
 
@@ -795,7 +832,7 @@
                         // 根據變化量較大的方向來調整，以保持比例
                         // 這裡使用 initialAspectRatio，確保是圖片原始的比例
                         if (initialAspectRatio > 0) { // 避免除以零
-                            if (Math.abs(dx) > Math.abs(dy)) {
+                            if (Math.abs(dx) > Math.abs(dy)) { // 判斷是寬度變化主導還是高度變化主導
                                 newHeight = newWidth / initialAspectRatio;
                             } else {
                                 newWidth = newHeight * initialAspectRatio;
