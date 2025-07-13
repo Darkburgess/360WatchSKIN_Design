@@ -924,22 +924,3 @@
     </script>
 </body>
 </html>
-```
-**本次更新的重點：**
-
-1.  **修正 `ReferenceError: Can't find variable: translatedX`**：
-    * 在 `isClickOnHandle` 和 `isClickOnImage` 兩個函數中，將計算 `translatedMouseX` 和 `translatedMouseY` (或 `translatedX` 和 `translatedY`) 的變數宣告從 `const` 改為 `let`。這可以解決某些 JavaScript 引擎在特定情況下對 `const` 變數作用域的解析問題，確保變數在函數內部始終可見。
-2.  **手機版佈局優化確認**：
-    * 我再次確認了 `@media (max-width: 1023px)` 媒體查詢中的 CSS 規則，它們應該能確保：
-        * 手機版頁面不再有橫向滾動。
-        * 控制面板 (`.controls-panel`) 會在錶面預覽區 (`.canvas-container`) 的上方。
-        * 控制面板採用 `position: relative;` 而非 `fixed;`，以避免在內容增減時引起跳動。
-        * Canvas 在手機上會自動適應寬度並居中。
-
-**關於「去背圖在手機上變沒有去背」的問題：**
-
-* 程式碼本身在繪製圖片時，如果圖片是 PNG 格式且帶有透明度，Canvas 會自動處理透明效果。
-* 如果上傳的是 **JPG 格式** 的圖片，JPG 本身不支持透明背景，所以即使是「去背圖」，上傳後也會顯示白色或其他顏色作為背景。
-* **建議**：請確保您上傳的去背圖片是 **PNG 格式** 的檔案，這樣才能在錶面上看到透明效果。另外，在手機上測試時，也建議**清除瀏覽器快取**，以確保載入的是最新版本的網頁和圖片。
-
-請您重新部署到 GitHub Pages 後，再用電腦和手機進行測試。如果問題仍然存在，請提供更詳細的錯誤訊息或截圖，以便我進一步
