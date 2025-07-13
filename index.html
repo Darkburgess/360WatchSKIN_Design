@@ -734,7 +734,7 @@
             const cos = Math.cos(-imgData.rotation * Math.PI / 180);
             const sin = Math.sin(-imgData.rotation * Math.PI / 180);
             const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
-            const rotatedMouseY = translatedX * sin + translatedY * cos;
+            const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos; // Fixed: used translatedMouseX/Y
 
             // 檢查反向旋轉後的座標是否在手柄的局部邊界內 (右下角手柄)
             const handleLocalX = imgData.width / 2 - HANDLE_SIZE / 2;
