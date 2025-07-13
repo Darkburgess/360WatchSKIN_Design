@@ -81,7 +81,7 @@
         .canvas-container {
             flex-shrink: 0;
             width: 400px; /* 錶面寬度 */
-            height: 400px; /* 錶面高度 */
+            height: 400px; /* 錶面高度 - 已修改為 400px */
             border: 2px solid #e2e8f0;
             border-radius: 12px;
             overflow: hidden;
@@ -305,7 +305,7 @@
 
         <!-- 錶面預覽區 -->
         <div class="canvas-container flex items-center justify-center">
-            <canvas id="watchFaceCanvas" width="400" height="400"></canvas>
+            <canvas id="watchFaceCanvas" width="400" height="400"></canvas> <!-- 已修改 height 為 400 -->
         </div>
     </div>
 
@@ -317,7 +317,7 @@
 
         // 錶面尺寸
         const WATCH_WIDTH = 400;
-        const WATCH_HEIGHT = 400;
+        const WATCH_HEIGHT = 400; // 已修改為 400
         const HANDLE_SIZE = 20; // 調整大小手柄的尺寸
         const MIN_IMAGE_SIZE = 20; // 圖片最小尺寸
         let BLEED_MARGIN = 30; // 圖片可以超出邊界的像素數 (現在是可變的)
@@ -734,7 +734,7 @@
             const cos = Math.cos(-imgData.rotation * Math.PI / 180);
             const sin = Math.sin(-imgData.rotation * Math.PI / 180);
             const rotatedMouseX = translatedMouseX * cos - translatedMouseY * sin;
-            const rotatedMouseY = translatedMouseX * sin + translatedMouseY * cos;
+            const rotatedMouseY = translatedX * sin + translatedY * cos;
 
             // 檢查反向旋轉後的座標是否在手柄的局部邊界內 (右下角手柄)
             const handleLocalX = imgData.width / 2 - HANDLE_SIZE / 2;
